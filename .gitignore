@@ -1,0 +1,6 @@
+/crates/*/debug/
+/crates/*/target/
+/crates/*/Cargo.lock
+Cargo.lock
+
+**/*.rs.bk
