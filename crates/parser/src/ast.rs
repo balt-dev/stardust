@@ -231,21 +231,6 @@ lang_enum!{
             pub op: UnaryOperator,
             pub target: Box<Expression>,
         },
-        Index {
-            pub target: Box<Expression>,
-            pub brackets: Token![[]],
-            pub index: Box<Expression>,
-        },
-        Call {
-            pub target: Box<Expression>,
-            pub parens: Token![()],
-            pub arguments: Separated<Expression, Token![,]>,
-        },
-        Cast {
-            pub target: Box<Expression>,
-            pub as_kw: Token![as],
-            pub ty: Type,
-        },
         Atom []
     }
 }
@@ -270,10 +255,6 @@ lang_enum!{
         BitwiseXor [ Token![^] ],
         ShiftLeft [ Token![<<] ],
         ShiftRight [ Token![>>] ],
-        Access [ Token![.] ],
-        FieldAccess [ Token![->] ],
-        FieldPointer [ Token![->&] ],
-        FieldPointerMaybe [ Token![->?] ],
         Assign [ Token![=] ],
     }
 }
@@ -284,6 +265,35 @@ lang_enum! {
         Reference [ Token![&] ],
         Not [ Token![!] ],
         Negate [ Token![-] ],
+
+        Access {
+            pub dot: Token![.],
+            pub field_name: Token![Identifier]
+        },
+        FieldAccess {
+            pub arrow: Token![->],
+            pub field_name: Token![Identifier]
+        },
+        FieldPointer {
+            pub amparrow: Token![->&],
+            pub field_name: Token![Identifier]
+        },
+        FieldPointerMaybe {
+            pub qarrow: Token![->?],
+            pub field_name: Token![Identifier]
+        },
+        Cast {
+            pub as_kw: Token![as],
+            pub ty: Type,
+        },
+        Call {
+            pub parens: Token![()],
+            pub arguments: Separated<Expression, Token![,]>,
+        },
+        Index {
+            pub brackets: Token![[]],
+            pub index: Box<Expression>,
+        }
     }
 }
 
