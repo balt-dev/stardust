@@ -177,6 +177,7 @@ impl Iterator for Lexer {
 
             '-' => if self.munch('>') { 
                 if self.munch('&') { Token![->& @ self.span(loc)] }
+                else if self.munch('?') { Token![->? @ self.span(loc)] }
                 else { Token![-> @ self.span(loc)] } 
             } else { Token![- @ self.span(loc)] },
 

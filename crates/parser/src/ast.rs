@@ -1,4 +1,5 @@
 use crate::tokens::Token;
+use either::Either;
 
 macro_rules! lang_enum {
     (pub enum $name: ident {
@@ -48,6 +49,11 @@ lang_enum! {
         ModFork {
             pub brace: Token![{}],
             pub parts: Separated<ImportPath, Token![,]>
+        },
+        ModParent {
+            pub parent_kw: Token![parent],
+            pub double_colon: Token![::],
+            pub next: Box<ImportPath>
         },
         ModPath {
             pub name: Token![Identifier],
@@ -202,14 +208,15 @@ lang_enum! {
         ArrayTy {
             pub target: Box<Type>,
             pub brackets: Token![[]],
-            pub length: Option<Expression>
+            pub length: Option<Box<Expression>>
         },
         FunctionTy {
             pub function_kw: Token![function],
             pub parens: Token![()],
             pub args: Separated<Type, Token![,]>,
             pub return_ty: Option<(Token![->], Box<Type>)>
-        }
+        },
+        Never [ Token![!] ],
     }
 }
 
@@ -234,8 +241,190 @@ lang_enum!{
             pub parens: Token![()],
             pub arguments: Separated<Expression, Token![,]>,
         },
+        Cast {
+            pub target: Box<Expression>,
+            pub as_kw: Token![as],
+            pub ty: Type,
+        },
+        Atom []
     }
 }
 
-// TODO
-pub type Statement = ();
+lang_enum!{
+    pub enum BinaryOperator {
+        Add [ Token![+] ],
+        Subtract [ Token![-] ],
+        Multiply [ Token![*] ],
+        Divide [ Token![/] ],
+        Remainder [ Token![%] ],
+        Equals [ Token![==] ],
+        NotEquals [ Token![!=] ],
+        LessOrEqual [ Token![<=] ],
+        GreaterOrEqual [ Token![>=] ],
+        Less [ Token![<] ],
+        Greater [ Token![>] ],
+        LogicalAnd [ Token![&&] ],
+        LogicalOr [ Token![||] ],
+        BitwiseAnd [ Token![&] ],
+        BitwiseOr [ Token![|] ],
+        BitwiseXor [ Token![^] ],
+        ShiftLeft [ Token![<<] ],
+        ShiftRight [ Token![>>] ],
+        Access [ Token![.] ],
+        FieldAccess [ Token![->] ],
+        FieldPointer [ Token![->&] ],
+        FieldPointerMaybe [ Token![->?] ],
+        Assign [ Token![=] ],
+    }
+}
+
+lang_enum! {
+    pub enum UnaryOperator {
+        Dereference [ Token![*] ],
+        Reference [ Token![&] ],
+        Not [ Token![!] ],
+        Negate [ Token![-] ],
+    }
+}
+
+lang_enum! {
+    pub enum Atom {
+        Path [],
+        Literal [],
+        Size {
+            pub size_kw: Token![size],
+            pub ty: Type
+        },
+        Alignment {
+            pub alignment_kw: Token![alignment],
+            pub ty: Type
+        },
+        Allocate {
+            pub allocate_kw: Token![allocate],
+            pub ty: Type
+        },
+        AllocateArray {
+            pub allocate_kw: Token![allocate],
+            pub brackets: Token![[]],
+            pub length: Box<Expression>,
+            pub ty: Type
+        },
+    }
+}
+
+lang_enum! {
+    pub enum Literal {
+        Explode [ Token![explode] ],
+        String [ Token![String] ],
+        Integer [],
+        Float [ Token![Float] ],
+        Null [ Token![null] ],
+        True [ Token![true] ],
+        False [ Token![false] ],
+        NullArray {
+            pub null_kw: Token![null],
+            pub brackets: Token![[]],
+        },
+    }
+}
+
+lang_enum! {
+    pub enum Integer {
+        Character [ Token![Character] ],
+        Binary [ Token![IntegerBin] ],
+        Octal [ Token![IntegerOct] ],
+        Decimal [ Token![IntegerDec] ],
+        Hexadecimal [ Token![IntegerHex] ],
+    }
+}
+
+lang_enum! {
+    pub enum Statement {
+        With { // Immutable
+            pub with_kw: Token![with],
+            pub name: Token![Identifier],
+            pub colon: Token![:],
+            pub ty: Type,
+            pub eq: Token![=],
+            pub value: Expression,
+            pub semicolon: Token![;],
+        },
+        Let { // Mutable
+            pub let_kw: Token![let],
+            pub name: Token![Identifier],
+            pub colon: Token![:],
+            pub ty: Type,
+            pub eq: Token![=],
+            pub value: Expression,
+            pub semicolon: Token![;],
+        },
+        Mutate {
+            pub lvalue: Expression,
+            pub binop: BinaryOperator,
+            pub eq: Token![=],
+            pub value: Expression,
+            pub semicolon: Token![;],
+        },
+        Deallocate {
+            pub deallocate_kw: Token![deallocate],
+            pub brackets: Option<Token![[]]>,
+            pub value: Expression,
+            pub semicolon: Token![;],
+        },
+        If {
+            pub blocks: Separated<IfBlock, Token![else]>,
+            pub fallback: Block
+        },
+        Switch {
+            pub switch_kw: Token![switch],
+            pub value: Expression,
+            pub braces: Token![{}],
+            pub cases: Separated<SwitchCase, Token![,]>
+        },
+        Block {
+            pub braces: Token![{}],
+            pub body: Vec<Statement>
+        },
+        For {
+            pub for_kw: Token![for],
+            pub parens: Token![()],
+            pub initializer: Either<Let, Token![;]>,
+            pub condition: Option<Expression>,
+            pub semicolon: Token![;],
+            pub iterator: Option<Expression>,
+            pub block: Block
+        },
+        While {
+            pub while_kw: Token![while],
+            pub condition: Expression,
+            pub block: Block
+        },
+        Continue {
+            pub continue_kw: Token![continue],
+            pub semicolon: Token![;],
+        },
+        Break {
+            pub break_kw: Token![break],
+            pub semicolon: Token![;],
+        },
+        Return {
+            pub return_kw: Token![return],
+            pub payload: Option<Expression>,
+            pub semicolon: Token![;],
+        },
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IfBlock {
+    pub if_kw: Token![if],
+    pub condition: Expression,
+    pub block: Block
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SwitchCase {
+    pub case_kw: Token![case],
+    pub value: Expression,
+    pub block: Block
+}

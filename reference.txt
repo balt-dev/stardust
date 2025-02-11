@@ -35,7 +35,7 @@ Items:
     Value that you can only take a pointer to, stored in read-write memory
 
 Statements:
-- if/else if/else
+- if/else
 - for
 - while
 - continue
