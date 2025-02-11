@@ -17,43 +17,20 @@ macro_rules! token_enum {
             $($var ( $var )),*
         }
 
+        fn unfuck(string: &str) -> std::string::String {
+            let s = string.split(|c: char| c.is_ascii_whitespace()).filter(|s| s.len() > 0);
+            s.collect::<Vec<&str>>().join(" ")
+        }
+
         impl std::fmt::Display for Token {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_> ) -> std::fmt::Result {
                 match self {
-                    Self::Parentheses(Parentheses { children, .. }) => {
-                        if f.alternate() { write!(f, "[Parentheses] ")?; }
-                        write!(f, "( ")?;
-                        for child in children.clone() {
-                            child.fmt(f)?;
-                            write!(f, " ")?;
-                        }
-                        write!(f, ")")
-                    },
-                    Self::Brackets(Brackets { children, .. }) => {
-                        if f.alternate() { write!(f, "[Brackets] ")?; }
-                        write!(f, "[ ")?;
-                        for child in children.clone() {
-                            child.fmt(f)?;
-                            write!(f, " ")?;
-                        }
-                        write!(f, "]")
-                    },
-                    Self::Braces(Braces { children, .. }) => {
-                        if f.alternate() { write!(f, "[Braces] ")?; }
-                        write!(f, "{{ ")?;
-                        for child in children.clone() {
-                            child.fmt(f)?;
-                            write!(f, " ")?;
-                        }
-                        write!(f, "}}")
-                    },
                     $(
-                        #[allow(unreachable_patterns)]
                         Self::$var( $var { span, .. }) => {
                             if f.alternate() {
                                 write!(f, "[{}: {}] ", stringify!($var), span.location)?;
                             }
-                            write!(f, "{span}")
+                            write!(f, "{}", unfuck(&span.source[span.start .. span.end]))
                         }
                     )*
                     
@@ -171,9 +148,9 @@ token_enum! {
     DoubleColon = ::,
     Colon = :,
     Semicolon = ;,
-    Parentheses extern = (),
-    Brackets extern = [],
-    Braces extern = {},
+    Parentheses = (),
+    Brackets = [],
+    Braces = {},
 
     OpenParenthesis = OpenParenthesis,
     OpenBracket = OpenBracket,
@@ -186,23 +163,3 @@ token_enum! {
     UnterminatedCharacter = UnterminatedCharacter
 
 }
-
-macro_rules! wrap_tok {
-    ($($name: ident)*) => {
-        $(
-            #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-            pub struct $name {
-                pub span: crate::lexer::Span,
-                pub children: $crate::lexer::Lexer
-            }
-
-            impl From<$name> for Token {
-                fn from(value: $name) -> Token {
-                    Token::$name(value)
-                }
-            }
-        )*
-    };
-}
-
-wrap_tok! { Parentheses Brackets Braces }

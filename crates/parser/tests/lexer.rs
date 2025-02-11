@@ -58,7 +58,5 @@ fn lexer_test() {
 
     let lex = Lexer::new(file.into());
 
-    for tok in lex {
-        print!("{:#}\n", tok)
-    }
+    println!("{lex}")
 }

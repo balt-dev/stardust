@@ -76,7 +76,7 @@ pub struct Lexer {
     source: Substr,
     location: FileLocation,
     index: usize,
-    active_child: Option<Box<Self>>
+    pub active_child: Option<Box<Self>>
 }
 
 impl std::fmt::Debug for Lexer {
@@ -154,10 +154,7 @@ impl Iterator for Lexer {
     type Item = Token;
 
     fn next(&mut self) -> Option<Token> {
-        if let Some(ref mut child) = self.active_child {
-            if let Some(tok) = child.next() { return Some(tok) }
-            self.active_child = None;
-        }
+        self.active_child = None;
         let loc = self.mark();
         let prebite = self.clone();
         let next = self.bite()?;
@@ -214,7 +211,8 @@ impl Iterator for Lexer {
                 self.source = self.source.substr( .. l.index - 1);
                 let child = self.clone();
                 *self = l;
-                Token![() @ self.span(loc); child]
+                self.active_child = Some(Box::new(child));
+                Token![() @ self.span(loc)]
             },
 
             '[' => 'b: {
@@ -223,7 +221,8 @@ impl Iterator for Lexer {
                 self.source = self.source.substr( .. l.index - 1);
                 let child = self.clone();
                 *self = l;
-                Token![[] @ self.span(loc); child]
+                self.active_child = Some(Box::new(child));
+                Token![[] @ self.span(loc)]
             },
 
             '{' => 'b: {
@@ -232,7 +231,8 @@ impl Iterator for Lexer {
                 self.source = self.source.substr( .. l.index - 1);
                 let child = self.clone();
                 *self = l;
-                Token![{} @ self.span(loc); child]
+                self.active_child = Some(Box::new(child));
+                Token![{} @ self.span(loc)]
             },
 
             ')' => Token![ClosedParenthesis @ self.span(loc)],
@@ -385,7 +385,7 @@ impl Lexer {
             "as" => Token![as @ self.span(loc)],
             "true" => Token![true @ self.span(loc)],
             "false" => Token![false @ self.span(loc)],
-            "super" => Token![super @ self.span(loc)],
+            "parent" => Token![parent @ self.span(loc)],
             _ => Token![Identifier @ self.span(loc)]
         }
     }
@@ -419,5 +419,25 @@ impl Lexer {
             if chr == target { break Ok(()); }
             if chr == '\\' { last_was_escape = true; }
         }
+    }
+}
+
+impl std::fmt::Display for Lexer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut stack = vec![self.clone()];
+        while let Some(last) = stack.last_mut() {
+            let Some(next) = last.next() else { stack.pop(); continue };
+            let mut offset = 0;
+            if let Some(child) = last.active_child.take() {
+                stack.push(*child);
+                offset = 1;
+            }
+            for _ in 1..stack.len() - offset {
+                write!(f, "\t")?;
+            }
+            write!(f, "{next:#}\n")?;
+        }
+
+        Ok(())
     }
 }
