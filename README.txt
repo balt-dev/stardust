@@ -7,7 +7,7 @@ Datatypes:
 - T[N], for some type T and uint N - constant length array
 - *? - a pointer to nothing in particular
 - *T, for some type T - a pointer to a value of type T
-- T[], for some type T - a dynamically sized array, essentially just a struct containing a uint and arbitrarily many T's - this can only be accessed via a pointer
+- T[], for some type T - a pointer to a dynamically sized array, essentially just a struct containing a uint and arbitrarily many T's
 - ?[] - a dynamically sized array of nothing in particular, array equivalent of *?
 - (A, B, ...) - a pointer to a function, taking types and returning nothing
 - (A, B, ...) -> C - a pointer to a function, taking types and returning something
@@ -62,4 +62,4 @@ Expressions:
 - allocate <type> (allocate space for a T on the heap and return a pointer to it)
 - allocate[<length>] <type> (allocate space for <length> T's on the heap consecutively, then return a T[] with the specified length and pointing to it)
 - <expr> as <type> (typecasting, e.g. a 64-bit enum into a u64, or a *u32 into an *f32)
-- <literal> (things like 5.0, true, "Hello" - strings are just a *u8[], being 8-bit clean)
+- <literal> (things like 5.0, true, "Hello" - strings are just a u8[], being 8-bit clean)
