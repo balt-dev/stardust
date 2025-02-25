@@ -1,10 +1,13 @@
 macro_rules! token_enum {
     (@second $tt2: tt) => { $tt2 };
     (@second $tt: tt $tt2: tt) => { $tt2 };
-    ($($var: ident $($no: ident)? = $tt: tt $([$($others: tt)*])?),* $(,)?) => {
+    ($($var: ident = $tt: tt $([$($others: tt)*])?),* $(,)?) => {
         #[macro_export]
         #[doc(hidden)]
         macro_rules! _Token {
+            $(($tt $($($others)*)? #($name: ident)) => {$crate::tokens::Token::$var($name)};)*
+            $(($tt $($($others)*)? #()) => {$crate::tokens::Token::$var(_)};)*
+            $(($tt $($($others)*)? #) => {$crate::tokens::TokenType::$var};)*
             $(($tt $($($others)*)?) => {$crate::tokens::$var};)*
             $(($tt $($($others)*)? @ $expr: expr) => {$crate::tokens::$var { span: $expr } .into()};)*
             $(($tt $($($others)*)? @ $expr: expr; $children: expr ) => {$crate::tokens::$var { span: $expr, children: $children } .into()};)*
@@ -52,17 +55,39 @@ macro_rules! token_enum {
                     $(Self::$var( $var { span, .. }))|* => span
                 }
             }
+
+            pub const fn ty(&self) -> TokenType {
+                match self {
+                    $(Token::$var(_) => TokenType::$var),*
+                }
+            }
+        }
+
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        pub enum TokenType {
+            $($var),*
+        }
+
+        impl TokenType {
+            pub fn into_token(self, span: $crate::lexer::Span) -> Token {
+                match self {
+                    $(TokenType::$var => Token::$var($var { span })),*
+                }
+            }
         }
 
         $(
-            token_enum! { @struct $($no)? $var }
+            token_enum! { @struct $var }
         )*
     };
-    (@struct extern $var: ident) => {};
     (@struct $var: ident) => {
         #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub struct $var {
             pub span: $crate::lexer::Span
+        }
+
+        impl $var {
+            pub const TYPE: TokenType = TokenType::$var;
         }
 
         impl From<$var> for Token {
@@ -85,7 +110,6 @@ token_enum! {
     Static = static,
     Global = global,
     External = external,
-    Overload = overload,
     Public = public,
     Internal = internal,
     If = if,
@@ -106,6 +130,7 @@ token_enum! {
     Deallocate = deallocate,
     As = as,
     Parent = parent,
+    Type = type,
     // Values,
     Null = null,
     True = true,
@@ -160,6 +185,7 @@ token_enum! {
     ClosedBrace = ClosedBrace,
     Unknown = Unknown,
     UnterminatedString = UnterminatedString,
-    UnterminatedCharacter = UnterminatedCharacter
+    UnterminatedCharacter = UnterminatedCharacter,
+    EndOfBlock = EOB
 
 }

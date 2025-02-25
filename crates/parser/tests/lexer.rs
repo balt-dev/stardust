@@ -9,7 +9,7 @@ fn lexer_test() {
         }
 
         public module Vector2 {
-            import super::Vector2;
+            import parent::Vector2;
             import std::{math::sqrt, io, io::Formatter};
 
             public function new(x: f32, y: f32) -> Vector2 {
@@ -25,34 +25,33 @@ fn lexer_test() {
             }
 
             public overload io::write (f: *Formatter, self: *constant Vector2) -> bool {
-                return io::write(f, '<')
+                return io::write(f, &'<')
                     && io::write(f, self->x)
                     && io::write(f, ", ")
                     && io::write(f, self->y)
-                    && io::write(f, '>');
+                    && io::write(f, &'>');
             }
         }
 
-        use std::{io, io::stdout};
+        use std::{io, io::{stdout, Formatter, write}};
 
         public function main(args: u8[][]) -> i32 {
             with a: Vector2 = Vector2::new(1.0, 0.0);
             with b: Vector2 = Vector2::new(-1.0, 0.0);
             with dot: f32 = Vector2::dot(&a, &b);
-            
-            io::write(&stdout->fmt, &"Vector 1: ");
-            io::write(&stdout->fmt, &a);
-            io::write(&stdout->fmt, &'\n');
 
-            io::write(&stdout->fmt, &"Vector 2: ");
-            io::write(&stdout->fmt, &b);
-            io::write(&stdout->fmt, &'\n');
+            with res: bool =
+                write(fmt, "Vector 1: ") &&
+                write(fmt, &a) &&
+                write(fmt, &'\n') &&
+                write(fmt, "Vector 2: ") &&
+                write(fmt, &b) &&
+                write(fmt, &'\n') &&
+                write(fmt, "Dot product: ") &&
+                write(fmt, &dot) &&
+                write(fmt, &'\n');
 
-            io::write(&stdout->fmt, &"Dot product: ");
-            io::write(&stdout->fmt, &dot);
-            io::write(&stdout->fmt, &'\n');
-
-            return 0;
+            return res as i32;
         }
     "#;
 

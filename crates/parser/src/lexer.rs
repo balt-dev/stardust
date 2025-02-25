@@ -140,29 +140,26 @@ struct LexerLocation {
 
 // --- Scanning ---
 
-const STACK_REDZONE: usize = 32 * 1024;
-const STACK_SIZE: usize = 1024 * 1024;
-
 impl Lexer {
     #[inline]
-    fn scan(&mut self) -> Option<Token> {
-        stacker::maybe_grow(STACK_REDZONE, STACK_SIZE, || self.next())
+    fn scan(&mut self) -> Token {
+        stacker::maybe_grow(crate::STACK_REDZONE, crate::STACK_SIZE, || self.next())
     }
 }
 
-impl Iterator for Lexer {
-    type Item = Token;
-
-    fn next(&mut self) -> Option<Token> {
+impl Lexer {
+    pub fn next(&mut self) -> Token {
         self.active_child = None;
         let loc = self.mark();
         let prebite = self.clone();
-        let next = self.bite()?;
+        let Some(next) = self.bite() else {
+            return Token![EOB @ self.span(loc)];
+        };
         if next.is_ascii_whitespace() {
             self.skip_whitespace();
             return self.next();
         }
-        Some(match next {
+        match next {
             '?' => Token![? @ self.span(loc)],
             '%' => Token![% @ self.span(loc)],
             ';' => Token![; @ self.span(loc)],
@@ -201,8 +198,8 @@ impl Iterator for Lexer {
             '=' => if self.munch('=') { Token![== @ self.span(loc)] } 
             else { Token![= @ self.span(loc)] },
 
-            '/' => if self.munch('*') && self.skip_comment() { self.scan()? } 
-            else if self.munch('/') { self.skip_line_comment(); self.scan()? } 
+            '/' => if self.munch('*') && self.skip_comment() { self.scan() } 
+            else if self.munch('/') { self.skip_line_comment(); self.scan() } 
             else { Token![/ @ self.span(loc)] },
 
             '(' => 'b: {
@@ -245,7 +242,7 @@ impl Iterator for Lexer {
             c if c.is_ascii_alphabetic() || c == '_' || unicode_ident::is_xid_start(c) => self.chomp_identifier(loc),
             
             _ => Token![Unknown @ self.span(loc)]
-        })
+        }
     }
 }
 
@@ -261,6 +258,11 @@ impl<T> ResultExt<T> for Result<T, T> {
 }
 
 impl Lexer {
+    pub fn lookahead(&self) -> Token {
+        let mut clone = self.clone();
+        clone.next()
+    }
+
     fn skip_balancing(&mut self, target: char) -> bool {
         let mut depth = 1;
         while depth > 0 {
@@ -362,7 +364,6 @@ impl Lexer {
             "static" => Token![static @ self.span(loc)],
             "global" => Token![global @ self.span(loc)],
             "external" => Token![external @ self.span(loc)],
-            "overload" => Token![overload @ self.span(loc)],
             "public" => Token![public @ self.span(loc)],
             "internal" => Token![internal @ self.span(loc)],
             "if" => Token![if @ self.span(loc)],
@@ -426,7 +427,8 @@ impl std::fmt::Display for Lexer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut stack = vec![self.clone()];
         while let Some(last) = stack.last_mut() {
-            let Some(next) = last.next() else { stack.pop(); continue };
+            let next = last.next();
+            if let Token::EndOfBlock(_) = next { stack.pop(); continue }
             let mut offset = 0;
             if let Some(child) = last.active_child.take() {
                 stack.push(*child);

@@ -35,6 +35,12 @@ pub struct Separated<T, S> {
     pub end: Option<Box<T>>
 }
 
+impl<T, S> Default for Separated<T, S> {
+    fn default() -> Self {
+        Self { parts: vec![], end: None }
+    }
+}
+
 pub type Path = Separated<Token![Identifier], Token![::]>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -77,8 +83,6 @@ lang_enum! {
             pub external_kw: Token![external],
             pub module_kw: Token![module],
             pub name: Token![Identifier],
-            pub colon: Token![:],
-            pub library: Token![String],
             pub brace: Token![{}],
             pub items: Vec<ExternItem>
         },
@@ -92,17 +96,20 @@ lang_enum! {
         Constant {
             pub vis: Visibility,
             pub constant_kw: Token![constant],
-            pub decl: VariableDeclaration
+            pub decl: VariableDeclaration,
+            pub semicolon: Token![;]
         },
         Static {
             pub vis: Visibility,
             pub static_kw: Token![static],
-            pub decl: VariableDeclaration
+            pub decl: VariableDeclaration,
+            pub semicolon: Token![;]
         },
         Global {
             pub vis: Visibility,
             pub global_kw: Token![global],
-            pub decl: VariableDeclaration
+            pub decl: VariableDeclaration,
+            pub semicolon: Token![;]
         },
         Struct {
             pub vis: Visibility,
@@ -130,12 +137,6 @@ lang_enum! {
         Function {
             pub vis: Visibility,
             pub function_kw: Token![function],
-            pub name: Token![Identifier],
-            pub def: FuncDef
-        },
-        Overload {
-            pub vis: Visibility,
-            pub function_kw: Token![overload],
             pub name: Path,
             pub def: FuncDef
         }
@@ -146,15 +147,17 @@ lang_enum! {
     pub enum ExternItem {
         ExtGlobal {
             pub global_kw: Token![global],
-            pub arg: Argument
+            pub argument: Argument,
+            pub semicolon: Token![;]
+        },
+        ExtType {
+            pub type_kw: Token![type],
+            pub name: Token![Identifier],
+            pub semicolon: Token![;]
         },
         ExtFunction {
-            pub vis: Visibility,
             pub function_kw: Token![function],
-            pub name: Token![Identifier],           
-            pub parens: Token![()],
-            pub arguments: Separated<Argument, Token![,]>,
-            pub return_ty: Option<(Token![->], Type)>,
+            pub header: FuncHeader,
             pub semicolon: Token![;]
         },
     }
@@ -162,7 +165,7 @@ lang_enum! {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VariableDeclaration {
-    pub arg: Argument,
+    pub argument: Argument,
     pub equal: Token![=],
     pub expr: Expression,
     pub semicolon: Token![;]
@@ -171,7 +174,7 @@ pub struct VariableDeclaration {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Field {
     pub vis: Visibility,
-    pub arg: Argument
+    pub argument: Argument
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -190,11 +193,16 @@ pub struct Variant {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FuncDef {
-    pub parens: Token![()],
-    pub arguments: Separated<Argument, Token![,]>,
-    pub return_ty: Option<(Token![->], Type)>,
+    pub header: FuncHeader,
     pub brace: Token![{}],
     pub statements: Vec<Statement>
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FuncHeader {
+    pub parens: Token![()],
+    pub arguments: Separated<(Either<Token![let], Token![with]>, Argument), Token![,]>,
+    pub return_ty: Option<(Token![->], Type)>,
 }
 
 lang_enum! {
@@ -213,7 +221,7 @@ lang_enum! {
         FunctionTy {
             pub function_kw: Token![function],
             pub parens: Token![()],
-            pub args: Separated<Type, Token![,]>,
+            pub arguments: Separated<Type, Token![,]>,
             pub return_ty: Option<(Token![->], Box<Type>)>
         },
         Never [ Token![!] ],
@@ -318,6 +326,10 @@ lang_enum! {
             pub brackets: Token![[]],
             pub length: Box<Expression>,
             pub ty: Type
+        },
+        Closure {
+            pub function_kw: Token![function],
+            pub def: FuncDef
         },
     }
 }
