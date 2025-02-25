@@ -224,6 +224,7 @@ lang_enum! {
             pub arguments: Separated<Type, Token![,]>,
             pub return_ty: Option<(Token![->], Box<Type>)>
         },
+        Arbitrary [ Token![?] ],
         Never [ Token![!] ],
     }
 }

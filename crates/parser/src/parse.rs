@@ -224,6 +224,7 @@ fn parse_type(lexer: &mut Lexer) -> ParseResult<Type> {
             Type::PointerTy(PointerTy { asterisk, constant_kw, target })
         }),
         (! @ tok => { Type::Never(tok) }),
+        (? @ tok => { Type::Arbitrary(tok) }),
         (function @ function_kw => {
             let parens = expect_tok!(() lexer.next());
             let mut child = get_child!(parens, lexer);
