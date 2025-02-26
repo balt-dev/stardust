@@ -165,13 +165,14 @@ impl Lexer {
             ';' => Token![; @ self.span(loc)],
             '^' => Token![^ @ self.span(loc)],
             '+' => Token![+ @ self.span(loc)],
-            '*' => Token![* @ self.span(loc)],
             ',' => Token![, @ self.span(loc)],
             '.' => Token![. @ self.span(loc)],
 
+            '*' => if self.munch('.') { Token![*. @ self.span(loc)] } 
+                else { Token![* @ self.span(loc)] },
+                
             '-' => if self.munch('>') { 
                 if self.munch('&') { Token![->& @ self.span(loc)] }
-                else if self.munch('?') { Token![->? @ self.span(loc)] }
                 else { Token![-> @ self.span(loc)] } 
             } else { Token![- @ self.span(loc)] },
 
@@ -196,11 +197,15 @@ impl Lexer {
                 else { Token![: @ self.span(loc)] },
 
             '=' => if self.munch('=') { Token![== @ self.span(loc)] } 
-            else { Token![= @ self.span(loc)] },
+                else if self.munch('>') { 
+                    if self.munch('&') { Token![=>& @ self.span(loc)] }
+                    else {Token![=> @ self.span(loc)]}
+                } 
+                else { Token![= @ self.span(loc)] },
 
             '/' => if self.munch('*') && self.skip_comment() { self.scan() } 
-            else if self.munch('/') { self.skip_line_comment(); self.scan() } 
-            else { Token![/ @ self.span(loc)] },
+                else if self.munch('/') { self.skip_line_comment(); self.scan() } 
+                else { Token![/ @ self.span(loc)] },
 
             '(' => 'b: {
                 let mut l = self.clone();
@@ -375,7 +380,6 @@ impl Lexer {
             "switch" => Token![switch @ self.span(loc)],
             "case" => Token![case @ self.span(loc)],
             "return" => Token![return @ self.span(loc)],
-            "explode" => Token![explode @ self.span(loc)],
             "with" => Token![with @ self.span(loc)],
             "let" => Token![let @ self.span(loc)],
             "size" => Token![size @ self.span(loc)],
@@ -386,6 +390,7 @@ impl Lexer {
             "as" => Token![as @ self.span(loc)],
             "true" => Token![true @ self.span(loc)],
             "false" => Token![false @ self.span(loc)],
+            "uninit" => Token![uninit @ self.span(loc)],
             "parent" => Token![parent @ self.span(loc)],
             _ => Token![Identifier @ self.span(loc)]
         }

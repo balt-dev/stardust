@@ -98,6 +98,12 @@ macro_rules! token_enum {
     }
 }
 
+impl Token {
+    pub const fn is_eob(&self) -> bool {
+        matches!(self, Token::EndOfBlock(_))
+    }
+}
+
 token_enum! {
     // Keywords
     Import = import,
@@ -121,7 +127,6 @@ token_enum! {
     Switch = switch,
     Case = case,
     Return = return,
-    Explode = explode,
     With = with,
     Let = let,
     Size = size,
@@ -131,9 +136,11 @@ token_enum! {
     As = as,
     Parent = parent,
     Type = type,
+    Any = any,
     // Values,
     Null = null,
     True = true,
+    Uninit = uninit,
     False = false,
     IntegerDec = IntegerDec,
     IntegerBin = IntegerBin,
@@ -148,9 +155,10 @@ token_enum! {
     DoubleGreater = >>,
     LessEqual = <=,
     GreaterEqual = >=,
-    ArrowAmpersand = -> [&],
-    ArrowQuestion = -> [?],
     Arrow = ->,
+    ArrowAmpersand = -> [&],
+    FatArrow = =>,
+    FatArrowAmpersand = => [&],
     DoubleEqual = ==,
     Equal = =,
     Less = <,
@@ -158,6 +166,7 @@ token_enum! {
     Plus = +,
     Minus = -,
     Asterisk = *,
+    AsteriskDot = * [.],
     DoubleAmpersand = &&,
     Ampersand = &,
     DoubleBar = ||,
@@ -173,6 +182,7 @@ token_enum! {
     DoubleColon = ::,
     Colon = :,
     Semicolon = ;,
+    At = @,
     Parentheses = (),
     Brackets = [],
     Braces = {},

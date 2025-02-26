@@ -35,6 +35,23 @@ pub struct Separated<T, S> {
     pub end: Option<Box<T>>
 }
 
+impl<T, S> IntoIterator for Separated<T, S> {
+    type Item = (T, Option<S>);
+
+    // This is dumb, but the compiler made me do it. :/
+    type IntoIter = 
+        std::iter::Chain<
+            std::iter::Map<std::vec::IntoIter<(T, S)>, fn((T, S)) -> (T, Option<S>)>,
+            std::iter::Map<std::option::IntoIter<Box<T>>, fn(Box<T>) -> (T, Option<S>)>
+        >;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.parts.into_iter()
+            .map((|(t, s)| (t, Some(s))) as fn((T, S)) -> (T, Option<S>))
+            .chain(self.end.into_iter().map((|v| (*v, None)) as fn(Box<T>) -> (T, Option<S>)))
+    }
+}
+
 impl<T, S> Default for Separated<T, S> {
     fn default() -> Self {
         Self { parts: vec![], end: None }
@@ -132,13 +149,13 @@ lang_enum! {
             pub colon: Token![:],
             pub repr: Type,
             pub brace: Token![{}],
-            pub variant: Separated<Variant, Token![,]>
+            pub variants: Separated<Variant, Token![,]>
         },
         Function {
             pub vis: Visibility,
             pub function_kw: Token![function],
             pub name: Path,
-            pub def: FuncDef
+            pub definition: FuncDef
         }
     }
 }
@@ -180,13 +197,11 @@ pub struct Field {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Argument {
     pub name: Token![Identifier],
-    pub colon: Token![:],
-    pub ty: Type
+    pub ty: Option<(Token![:], Type)>
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Variant {
-    pub vis: Visibility,
     pub name: Token![Identifier],
     pub value: Option<(Token![=], Expression)>,
 }
@@ -213,10 +228,19 @@ lang_enum! {
             pub constant_kw: Option<Token![constant]>,
             pub target: Box<Type>
         },
+        NonNullPointerTy {
+            pub asterisk_dot: Token![*.],
+            pub constant_kw: Option<Token![constant]>,
+            pub target: Box<Type>
+        },
         ArrayTy {
             pub target: Box<Type>,
             pub brackets: Token![[]],
             pub length: Option<Box<Expression>>
+        },
+        OptionalTy {
+            pub target: Box<Type>,
+            pub question: Token![?],
         },
         FunctionTy {
             pub function_kw: Token![function],
@@ -224,8 +248,7 @@ lang_enum! {
             pub arguments: Separated<Type, Token![,]>,
             pub return_ty: Option<(Token![->], Box<Type>)>
         },
-        Arbitrary [ Token![?] ],
-        Never [ Token![!] ],
+        Arbitrary [ Token![any] ],
     }
 }
 
@@ -264,17 +287,22 @@ lang_enum!{
         BitwiseXor [ Token![^] ],
         ShiftLeft [ Token![<<] ],
         ShiftRight [ Token![>>] ],
-        Assign [ Token![=] ],
     }
 }
 
 lang_enum! {
     pub enum UnaryOperator {
         Dereference [ Token![*] ],
+        NonNullDereference [ Token![*.] ],
         Reference [ Token![&] ],
         Not [ Token![!] ],
         Negate [ Token![-] ],
 
+        // <i32>? + <i32> = <i32?>
+        // for struct T { field: i32 }, <T>.field = i32?, but <T*>? -> field = i32?, null if <T*> is null - you can do <T*> => field if you're sure
+        // having a T*? is a compilation error, since a T* already has a null value
+        // a T[]? makes sense though, since that may not have a length
+        Unwrap [ Token![?] ],  
         Access {
             pub dot: Token![.],
             pub field_name: Token![Identifier]
@@ -283,12 +311,16 @@ lang_enum! {
             pub arrow: Token![->],
             pub field_name: Token![Identifier]
         },
+        NonNullFieldAccess {
+            pub fat_arrow: Token![=>],
+            pub field_name: Token![Identifier]
+        },
         FieldPointer {
             pub amparrow: Token![->&],
             pub field_name: Token![Identifier]
         },
-        FieldPointerMaybe {
-            pub qarrow: Token![->?],
+        NonNullFieldPointer {
+            pub fat_amparrow: Token![=>&],
             pub field_name: Token![Identifier]
         },
         Cast {
@@ -300,6 +332,7 @@ lang_enum! {
             pub arguments: Separated<Expression, Token![,]>,
         },
         Index {
+            pub prefix: Option<(Token![@], Either<Token![&], Token![?]>)>,
             pub brackets: Token![[]],
             pub index: Box<Expression>,
         }
@@ -328,31 +361,25 @@ lang_enum! {
             pub length: Box<Expression>,
             pub ty: Type
         },
-        Closure {
-            pub function_kw: Token![function],
-            pub def: FuncDef
+        Array {
+            pub brackets: Token![[]],
+            pub members: Separated<Expression, Token![,]>,
         },
     }
 }
 
 lang_enum! {
     pub enum Literal {
-        Explode [ Token![explode] ],
         String [ Token![String] ],
-        Integer [],
         Float [ Token![Float] ],
         Null [ Token![null] ],
+        Uninit [ Token![uninit] ],
         True [ Token![true] ],
         False [ Token![false] ],
         NullArray {
             pub null_kw: Token![null],
             pub brackets: Token![[]],
         },
-    }
-}
-
-lang_enum! {
-    pub enum Integer {
         Character [ Token![Character] ],
         Binary [ Token![IntegerBin] ],
         Octal [ Token![IntegerOct] ],
@@ -383,7 +410,7 @@ lang_enum! {
         },
         Mutate {
             pub lvalue: Expression,
-            pub binop: BinaryOperator,
+            pub binop: Option<BinaryOperator>,
             pub eq: Token![=],
             pub value: Expression,
             pub semicolon: Token![;],

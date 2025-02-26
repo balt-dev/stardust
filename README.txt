@@ -5,12 +5,13 @@ Datatypes:
 - uint, int (pointer-sized)
 - f32, f64
 - T[N], for some type T and uint N - constant length array
-- *? - a pointer to nothing in particular
+- *any - a pointer to nothing in particular
 - *T, for some type T - a pointer to a value of type T
 - T[], for some type T - a pointer to a dynamically sized array, essentially just a struct { *T, uint }
-- ?[] - a dynamically sized array of nothing in particular, array equivalent of *?
+- any[] - a dynamically sized array of nothing in particular, array equivalent of *?
 - function (A, B, ...) - a pointer to a function, taking types and returning nothing
 - function (A, B, ...) -> C - a pointer to a function, taking types and returning something
+- T? - a struct { bool, union { !, T } } - aka an Option<T>
 
 Items:
 - import
