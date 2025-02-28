@@ -8,10 +8,9 @@ Datatypes:
 - *any - a pointer to nothing in particular
 - *T, for some type T - a pointer to a value of type T
 - T[], for some type T - a pointer to a dynamically sized array, essentially just a struct { *T, uint }
-- any[] - a dynamically sized array of nothing in particular, array equivalent of *?
+- any[] - a dynamically sized array of nothing in particular, array equivalent of *any
 - function (A, B, ...) - a pointer to a function, taking types and returning nothing
 - function (A, B, ...) -> C - a pointer to a function, taking types and returning something
-- T? - a struct { bool, union { !, T } } - aka an Option<T>
 
 Items:
 - import
@@ -58,8 +57,8 @@ Expressions:
 - <path> (variable names)
 - size <type> (get the size of a type as a uptr)
 - alignment <type> (get the alignment of a type as a uptr)
-- null (a *? with a value of 0)
-- null[] (a ?[] with a length and value of 0)
+- null (a *any with a value of 0)
+- null[] (a any[] with a length and value of 0)
 - allocate <type> (allocate space for a T on the heap and return a pointer to it)
 - allocate[<length>] <type> (allocate space for <length> T's on the heap consecutively, then return a T[] with the specified length and pointing to it)
 - <expr> as <type> (typecasting, e.g. a 64-bit enum into a u64, or a *u32 into an *f32)
