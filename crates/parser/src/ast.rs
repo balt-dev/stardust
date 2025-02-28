@@ -207,6 +207,13 @@ pub struct Variant {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FieldValue {
+    pub name: Token![Identifier],
+    pub colon: Token![:], 
+    pub value: Expression,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FuncDef {
     pub header: FuncHeader,
     pub brace: Token![{}],
@@ -228,19 +235,10 @@ lang_enum! {
             pub constant_kw: Option<Token![constant]>,
             pub target: Box<Type>
         },
-        NonNullPointerTy {
-            pub asterisk_dot: Token![*.],
-            pub constant_kw: Option<Token![constant]>,
-            pub target: Box<Type>
-        },
         ArrayTy {
             pub target: Box<Type>,
             pub brackets: Token![[]],
             pub length: Option<Box<Expression>>
-        },
-        OptionalTy {
-            pub target: Box<Type>,
-            pub question: Token![?],
         },
         FunctionTy {
             pub function_kw: Token![function],
@@ -290,19 +288,31 @@ lang_enum!{
     }
 }
 
+lang_enum!{
+    pub enum MutateOperator {
+        Assign [ Token![=] ],
+        AddAssign [ Token![+=] ],
+        SubtractAssign [ Token![-=] ],
+        MultiplyAssign [ Token![*=] ],
+        DivideAssign [ Token![/=] ],
+        RemainderAssign [ Token![%=] ],
+        LogicalAndAssign [ Token![&&=] ],
+        LogicalOrAssign [ Token![||=] ],
+        BitwiseAndAssign [ Token![&=] ],
+        BitwiseOrAssign [ Token![|=] ],
+        BitwiseXorAssign [ Token![^=] ],
+        ShiftLeftAssign [ Token![<<=] ],
+        ShiftRightAssign [ Token![>>=] ],
+    }
+}
+
 lang_enum! {
     pub enum UnaryOperator {
         Dereference [ Token![*] ],
-        NonNullDereference [ Token![*.] ],
         Reference [ Token![&] ],
         Not [ Token![!] ],
         Negate [ Token![-] ],
 
-        // <i32>? + <i32> = <i32?>
-        // for struct T { field: i32 }, <T>.field = i32?, but <T*>? -> field = i32?, null if <T*> is null - you can do <T*> => field if you're sure
-        // having a T*? is a compilation error, since a T* already has a null value
-        // a T[]? makes sense though, since that may not have a length
-        Unwrap [ Token![?] ],  
         Access {
             pub dot: Token![.],
             pub field_name: Token![Identifier]
@@ -311,16 +321,8 @@ lang_enum! {
             pub arrow: Token![->],
             pub field_name: Token![Identifier]
         },
-        NonNullFieldAccess {
-            pub fat_arrow: Token![=>],
-            pub field_name: Token![Identifier]
-        },
         FieldPointer {
             pub amparrow: Token![->&],
-            pub field_name: Token![Identifier]
-        },
-        NonNullFieldPointer {
-            pub fat_amparrow: Token![=>&],
             pub field_name: Token![Identifier]
         },
         Cast {
@@ -332,7 +334,7 @@ lang_enum! {
             pub arguments: Separated<Expression, Token![,]>,
         },
         Index {
-            pub prefix: Option<(Token![@], Either<Token![&], Token![?]>)>,
+            pub prefix: Option<Token![@]>,
             pub brackets: Token![[]],
             pub index: Box<Expression>,
         }
@@ -365,6 +367,12 @@ lang_enum! {
             pub brackets: Token![[]],
             pub members: Separated<Expression, Token![,]>,
         },
+        Construct {
+            pub kw: Either<Token![struct], Token![union]>,
+            pub name: Path,
+            pub braces: Token![{}],
+            pub members: Separated<FieldValue, Token![,]>,
+        },
     }
 }
 
@@ -390,28 +398,14 @@ lang_enum! {
 
 lang_enum! {
     pub enum Statement {
-        With { // Immutable
-            pub with_kw: Token![with],
-            pub name: Token![Identifier],
-            pub colon: Token![:],
-            pub ty: Type,
-            pub eq: Token![=],
-            pub value: Expression,
-            pub semicolon: Token![;],
-        },
-        Let { // Mutable
-            pub let_kw: Token![let],
-            pub name: Token![Identifier],
-            pub colon: Token![:],
-            pub ty: Type,
-            pub eq: Token![=],
-            pub value: Expression,
-            pub semicolon: Token![;],
+        StItem [ Item ],
+        Init {
+            pub kw: Either<Token![let], Token![with]>,
+            pub decl: VariableDeclaration
         },
         Mutate {
             pub lvalue: Expression,
-            pub binop: Option<BinaryOperator>,
-            pub eq: Token![=],
+            pub binop: MutateOperator,
             pub value: Expression,
             pub semicolon: Token![;],
         },
@@ -423,7 +417,7 @@ lang_enum! {
         },
         If {
             pub blocks: Separated<IfBlock, Token![else]>,
-            pub fallback: Block
+            pub fallback: Box<Statement>
         },
         Switch {
             pub switch_kw: Token![switch],
@@ -437,17 +431,20 @@ lang_enum! {
         },
         For {
             pub for_kw: Token![for],
-            pub parens: Token![()],
-            pub initializer: Either<Let, Token![;]>,
+            pub initializer: Box<Statement>,
             pub condition: Option<Expression>,
             pub semicolon: Token![;],
             pub iterator: Option<Expression>,
-            pub block: Block
+            pub body: Box<Statement>
         },
         While {
             pub while_kw: Token![while],
             pub condition: Expression,
-            pub block: Block
+            pub body: Box<Statement>
+        },
+        Loop {
+            pub loop_kw: Token![loop],
+            pub body: Box<Statement>
         },
         Continue {
             pub continue_kw: Token![continue],
@@ -462,6 +459,11 @@ lang_enum! {
             pub payload: Option<Expression>,
             pub semicolon: Token![;],
         },
+        StExpression {
+            pub expr: Expression,
+            pub semicolon: Token![;]
+        },
+        Pass [ Token![;] ],
     }
 }
 
@@ -469,12 +471,13 @@ lang_enum! {
 pub struct IfBlock {
     pub if_kw: Token![if],
     pub condition: Expression,
-    pub block: Block
+    pub block: Box<Statement>
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SwitchCase {
     pub case_kw: Token![case],
     pub value: Expression,
-    pub block: Block
+    pub colon: Token![:],
+    pub block: Box<Statement>
 }

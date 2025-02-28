@@ -68,6 +68,16 @@ macro_rules! token_enum {
             $($var),*
         }
 
+        impl std::fmt::Display for TokenType {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_> ) -> std::fmt::Result {
+                match self {
+                    $(
+                        Self::$var => write!(f, "{}", stringify!($tt $($($others)*)?)),
+                    )*
+                }
+            }
+        }
+
         impl TokenType {
             pub fn into_token(self, span: $crate::lexer::Span) -> Token {
                 match self {
@@ -122,6 +132,7 @@ token_enum! {
     Else = else,
     For = for,
     While = while,
+    Loop = loop,
     Continue = continue,
     Break = break,
     Switch = switch,
@@ -150,6 +161,20 @@ token_enum! {
     String = String,
     Character = Character,
     Identifier = Identifier,
+    // Mutation
+    PlusEqual = +=,
+    MinusEqual = -=,
+    AsteriskEqual = *=,
+    SlashEqual = /=,
+    PercentEqual = %=,
+    DoubleAmpersandEqual = && [=],
+    DoubleBarEqual = || [=],
+    AmpersandEqual = &=,
+    BarEqual = |=,
+    CaratEqual = ^=,
+    DoubleLessEqual = <<=,
+    DoubleGreaterEqual = >>=,
+    HashEqual = # [=],
     // Punctuation,
     DoubleLess = <<,
     DoubleGreater = >>,
@@ -157,8 +182,6 @@ token_enum! {
     GreaterEqual = >=,
     Arrow = ->,
     ArrowAmpersand = -> [&],
-    FatArrow = =>,
-    FatArrowAmpersand = => [&],
     DoubleEqual = ==,
     Equal = =,
     Less = <,
@@ -166,7 +189,6 @@ token_enum! {
     Plus = +,
     Minus = -,
     Asterisk = *,
-    AsteriskDot = * [.],
     DoubleAmpersand = &&,
     Ampersand = &,
     DoubleBar = ||,
@@ -186,7 +208,7 @@ token_enum! {
     Parentheses = (),
     Brackets = [],
     Braces = {},
-
+    // Error stuff
     OpenParenthesis = OpenParenthesis,
     OpenBracket = OpenBracket,
     OpenBrace = OpenBrace,
@@ -197,5 +219,4 @@ token_enum! {
     UnterminatedString = UnterminatedString,
     UnterminatedCharacter = UnterminatedCharacter,
     EndOfBlock = EOB
-
 }

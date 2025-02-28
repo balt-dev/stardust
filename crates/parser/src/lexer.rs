@@ -67,7 +67,31 @@ impl std::fmt::Debug for Span {
 
 impl std::fmt::Display for Span {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if f.alternate() {
+            let mut line_index = self.location.line;
+            let lines = self.get_lines();
+            let count = lines.lines().count();
+            let max_index = line_index + count;
+            let width = max_index.ilog10() as usize;
+            for line in lines.lines() {
+                write!(f, "{line_index: <w$} | {line}", w = width)?;
+                writeln!(f)?;
+                line_index += 1;
+            }
+            let col = self.location.column;
+            for _ in 0..(col + width + 3) { write!(f, " ")?; }
+            write!(f, "^")?;
+            return Ok(())
+        }
         write!(f, "{}", self.source.substr(self.start .. self.end))
+    }
+}
+
+impl Span {
+    pub fn get_lines(&self) -> Substr {
+        let start = self.source[..self.start].rfind('\n').map_or(0, |idx| idx + 1);
+        let end = self.source[self.end..].find('\n').map_or(self.source.len(), |idx| idx + self.end);
+        self.source.substr(start .. end)
     }
 }
 
@@ -160,35 +184,49 @@ impl Lexer {
             return self.next();
         }
         match next {
-            '?' => Token![? @ self.span(loc)],
-            '%' => Token![% @ self.span(loc)],
+            '%' => if self.munch('=') { Token![%= @ self.span(loc)] }
+                    else {Token![% @ self.span(loc)]},
             ';' => Token![; @ self.span(loc)],
-            '^' => Token![^ @ self.span(loc)],
-            '+' => Token![+ @ self.span(loc)],
+            '^' => if self.munch('=') { Token![^= @ self.span(loc)] }
+                    else {Token![^ @ self.span(loc)]},
+            '+' => if self.munch('=') { Token![+= @ self.span(loc)] }
+                    else {Token![+ @ self.span(loc)]},
             ',' => Token![, @ self.span(loc)],
             '.' => Token![. @ self.span(loc)],
 
-            '*' => if self.munch('.') { Token![*. @ self.span(loc)] } 
+            '*' => if self.munch('=') { Token![*= @ self.span(loc)] }
                 else { Token![* @ self.span(loc)] },
                 
             '-' => if self.munch('>') { 
                 if self.munch('&') { Token![->& @ self.span(loc)] }
                 else { Token![-> @ self.span(loc)] } 
-            } else { Token![- @ self.span(loc)] },
+            } 
+            else if self.munch('=') { Token![-= @ self.span(loc)] }
+            else { Token![- @ self.span(loc)] },
 
-            '<' => if self.munch('<') { Token![<< @ self.span(loc)] } 
-                else if self.munch('=') { Token![<= @ self.span(loc)] } 
-                else { Token![< @ self.span(loc)] },
+            '<' => if self.munch('<') { 
+                if self.munch('=') { Token![<<= @ self.span(loc)] }
+                else { Token![<< @ self.span(loc)] }
+            } else if self.munch('=') { Token![<= @ self.span(loc)] }
+            else { Token![< @ self.span(loc)] },
 
-            '>' => if self.munch('>') { Token![>> @ self.span(loc)] } 
-                else if self.munch('=') { Token![>= @ self.span(loc)] } 
-                else { Token![> @ self.span(loc)] },
+            '>' => if self.munch('>') { 
+                if self.munch('=') { Token![>>= @ self.span(loc)] }
+                else { Token![>> @ self.span(loc)] }
+            } else if self.munch('=') { Token![>= @ self.span(loc)] }
+            else { Token![> @ self.span(loc)] },
 
-            '|' => if self.munch('|') { Token![|| @ self.span(loc)] } 
-                else { Token![| @ self.span(loc)] },
+            '|' => if self.munch('|') { 
+                if self.munch('=') { Token![||= @ self.span(loc)] }
+                else { Token![|| @ self.span(loc)] }
+            } else if self.munch('=') { Token![|= @ self.span(loc)] }
+            else { Token![| @ self.span(loc)] },
 
-            '&' => if self.munch('&') { Token![&& @ self.span(loc)] } 
-                else { Token![& @ self.span(loc)] },
+            '&' => if self.munch('&') { 
+                if self.munch('=') { Token![&&= @ self.span(loc)] }
+                else { Token![&& @ self.span(loc)] }
+            } else if self.munch('=') { Token![&= @ self.span(loc)] }
+            else { Token![& @ self.span(loc)] },
 
             '!' => if self.munch('=') { Token![!= @ self.span(loc)] } 
                 else { Token![! @ self.span(loc)] },
@@ -197,14 +235,11 @@ impl Lexer {
                 else { Token![: @ self.span(loc)] },
 
             '=' => if self.munch('=') { Token![== @ self.span(loc)] } 
-                else if self.munch('>') { 
-                    if self.munch('&') { Token![=>& @ self.span(loc)] }
-                    else {Token![=> @ self.span(loc)]}
-                } 
                 else { Token![= @ self.span(loc)] },
 
             '/' => if self.munch('*') && self.skip_comment() { self.scan() } 
                 else if self.munch('/') { self.skip_line_comment(); self.scan() } 
+                else if self.munch('=') { Token![/= @ self.span(loc)] }
                 else { Token![/ @ self.span(loc)] },
 
             '(' => 'b: {
@@ -385,13 +420,13 @@ impl Lexer {
             "size" => Token![size @ self.span(loc)],
             "alignment" => Token![alignment @ self.span(loc)],
             "null" => Token![null @ self.span(loc)],
-            "allocate" => Token![allocate @ self.span(loc)],
-            "deallocate" => Token![deallocate @ self.span(loc)],
             "as" => Token![as @ self.span(loc)],
             "true" => Token![true @ self.span(loc)],
             "false" => Token![false @ self.span(loc)],
             "uninit" => Token![uninit @ self.span(loc)],
             "parent" => Token![parent @ self.span(loc)],
+            "loop" => Token![loop @ self.span(loc)],
+            "any" => Token![any @ self.span(loc)],
             _ => Token![Identifier @ self.span(loc)]
         }
     }

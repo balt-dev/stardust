@@ -1,0 +1,14 @@
+[ ] creating a HIR
+  [ ] calculating the type of expressions
+  [ ] resolving function overloads
+  [ ] checking visibility rules
+  [ ] rudimentary const eval for globals and stuff
+[ ] compiling from that to a MIR
+  [ ] figuring out allocation / deallocation
+  [ ] creating struct layouts and stuff
+  [ ] inlining constant variables
+[ ] compiling from that to LLVM IR
+  [ ] figuring out how to mangle names
+  [ ] global/static variable storage
+  [ ] linking to libraries
+  [ ] calling conventions
